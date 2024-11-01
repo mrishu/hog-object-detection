@@ -13,3 +13,12 @@ python prepare_data.py
 python train.py
 python test.py
 ```
+
+## Results
+```
+Accuracy: 0.97
+Precision: 0.95
+Recall: 0.96
+F1 Score: 0.96
+```
+NOTE: Results may vary between different runs of the whole process.
