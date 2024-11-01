@@ -59,7 +59,6 @@ def extract_negative_regions(image, labels, neg_size=(128, 256), max_attempts=50
         x_end = x_start + neg_width
         y_end = y_start + neg_height
 
-        # Check if the selected region overlaps any human bounding box
         overlaps = any(
             x_end > x_min and x_start < x_max and y_end > y_min and y_start < y_max
             for (x_min, y_min, x_max, y_max) in converted_labels
@@ -89,31 +88,30 @@ def extract_negative_regions(image, labels, neg_size=(128, 256), max_attempts=50
     return None, None
 
 
-SPLIT = "valid"  # one of train, test or valid
+for split in ["train", "valid", "test"]:
+    image_dir = f"./inria/{split}/images/"
+    labels_dir = f"./inria/{split}/labels/"
+    neg_image_dir = f"./inria_neg/{split}/images"
 
-image_dir = f"./inria/{SPLIT}/images/"
-labels_dir = f"./inria/{SPLIT}/labels/"
-neg_image_dir = f"./inria_neg/{SPLIT}/images"
+    dirs = [image_dir, labels_dir, neg_image_dir]
+    for dir in dirs:
+        if not os.path.exists(dir):
+            os.makedirs(dir)
 
-dirs = [image_dir, labels_dir, neg_image_dir]
-for dir in dirs:
-    if not os.path.exists(dir):
-        os.makedirs(dir)
-
-for file in tqdm(os.listdir(image_dir)):
-    imfile = os.path.join(image_dir, file)
-    image = cv2.imread(imfile).astype(np.float64)
-    label_file = os.path.join(labels_dir, file[:-4] + ".txt")
-    labels = np.loadtxt(label_file)
-    neg_image, neg_label = extract_negative_regions(image, labels)
-    i = 1
-    while neg_label is not None:
-        neg_image_filename = file[:-4] + f"-try{i}" + ".jpg"
-        print(neg_image_filename)
-        cv2.imwrite(
-            os.path.join(neg_image_dir, neg_image_filename),
-            neg_image,
-        )
-        labels = np.vstack((labels, neg_label))
+    for file in tqdm(os.listdir(image_dir)):
+        imfile = os.path.join(image_dir, file)
+        image = cv2.imread(imfile).astype(np.float64)
+        label_file = os.path.join(labels_dir, file[:-4] + ".txt")
+        labels = np.loadtxt(label_file)
         neg_image, neg_label = extract_negative_regions(image, labels)
-        i += 1
+        i = 1
+        while neg_label is not None:
+            neg_image_filename = file[:-4] + f"-try{i}" + ".jpg"
+            print(neg_image_filename)
+            cv2.imwrite(
+                os.path.join(neg_image_dir, neg_image_filename),
+                neg_image,
+            )
+            labels = np.vstack((labels, neg_label))
+            neg_image, neg_label = extract_negative_regions(image, labels)
+            i += 1
