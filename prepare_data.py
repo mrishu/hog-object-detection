@@ -6,7 +6,11 @@ from tqdm import tqdm
 from hog import compute_gradients, get_window_descriptor
 from utils import crop_image_using_labels
 
-DETECTION_WIN_SIZE = (64, 128)
+DETECTION_WIN_SIZE = (64, 128)  # in terms of pixels
+CELL_SIZE = (8, 8)  # in terms of pixels
+UNSIGNED_GRAD = True
+NUM_BINS = 9
+BLOCK_SIZE = (2, 2)  # in terms of number of cells
 
 
 def get_hog_features(image_dir, labels_dir=None):
@@ -25,7 +29,14 @@ def get_hog_features(image_dir, labels_dir=None):
                 cropped_image, DETECTION_WIN_SIZE, cv2.INTER_AREA
             )
             grad_magnitude, grad_angle = compute_gradients(cropped_image)
-            descriptor_vector = get_window_descriptor(grad_magnitude, grad_angle)
+            descriptor_vector = get_window_descriptor(
+                grad_magnitude,
+                grad_angle,
+                cell_size=CELL_SIZE,
+                unsigned_grad=UNSIGNED_GRAD,
+                num_bins=NUM_BINS,
+                block_size=BLOCK_SIZE,
+            )
             hog_features.append(descriptor_vector)
     return hog_features
 
@@ -43,13 +54,13 @@ def prepare_data(pos_image_dir, neg_image_dir, pos_labels_dir=None):
     return X, y
 
 
-data_dir = "./data/"
+data_dir = "data"
 
 for split in ["train", "valid", "test"]:
     print("Preparing", split, "data")
-    image_dir = f"./inria/{split}/images/"
-    label_dir = f"./inria/{split}/labels/"
-    image_dir_neg = f"./inria_neg/{split}/images/"
+    image_dir = os.path.join("inria", split, "images")
+    label_dir = os.path.join("inria", split, "labels")
+    image_dir_neg = os.path.join("inria_neg", split, "images")
     X, y = prepare_data(image_dir, image_dir_neg, label_dir)
     if not os.path.exists(os.path.join(data_dir, split)):
         os.makedirs(os.path.join(data_dir, split))

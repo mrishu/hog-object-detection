@@ -16,6 +16,9 @@ def compute_gradients(image: np.ndarray) -> tuple:
     Ix = cv2.filter2D(image, -1, dx_ker)
     Iy = cv2.filter2D(image, -1, dy_ker)
     magnitude, angle = cart_to_polar(Ix, Iy, angleInDegrees=True)
+    # max_magnitude_idx = np.argmax(magnitude, axis=2)
+    # d1x, d2x = np.indices(max_magnitude_idx.shape)
+    # return magnitude[d1x, d2x, max_magnitude_idx], angle[d1x, d2x, max_magnitude_idx]
     return magnitude, angle
 
 
@@ -98,7 +101,7 @@ def get_window_descriptor(
     - cell_size: The size of the cells in the window.
     - unsigned_grad: Whether the gradient angle is in the range [0, 180] or [0, 360].
     - num_bins: The number of histogram bins for each cell.
-    - block_size : number of cells in a block
+    - block_size : The number of cells in a block
 
     returns:
     - window_descriptor : a concatenated numpy array of size = (num_cells_in_block * num_bins)
@@ -114,8 +117,8 @@ def get_window_descriptor(
     x_cells = cell_descriptors.shape[0]  # number of cells along x_axis
     y_cells = cell_descriptors.shape[1]  # number of cells along y_axis
 
-    x_blocks = x_cells - block_size[0] + 1  # number of blocks along x_axis
-    y_blocks = y_cells - block_size[1] + 1  # number of blocks along y_axis
+    x_blocks = x_cells - block_size[1] + 1  # number of blocks along x_axis
+    y_blocks = y_cells - block_size[0] + 1  # number of blocks along y_axis
 
     window_vec = []
 
@@ -131,26 +134,3 @@ def get_window_descriptor(
             window_vec.extend(concat_block_vec)
     window_vec = np.array(window_vec)
     return window_vec
-
-
-# Test with a sample grayscale image
-if __name__ == "__main__":
-    # Load an image
-    img = cv2.imread(
-        "./inria/train/images/crop001001_jpg.rf.32740cc67797bb7094916e179a25ae9b.jpg",
-        cv2.IMREAD_GRAYSCALE,
-    ).astype(np.float64)
-    if img is None:
-        raise ValueError("Image not found. Please check the path.")
-
-    # Compute gradients
-    magnitude, angle = compute_gradients(img)
-
-    # Compute cell HOG descriptors for a window
-    window_size = (64, 128)
-    magnitude = magnitude[: window_size[0], : window_size[1]]
-    angle = angle[: window_size[0], : window_size[1]]
-    hog_features = get_cell_descriptors(magnitude, angle)
-
-    print("HOG features:", hog_features)
-    print("HOG features shape:", hog_features.shape)

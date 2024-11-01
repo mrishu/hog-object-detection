@@ -1,7 +1,6 @@
 import numpy as np
 import cv2
 import os
-from tqdm import tqdm
 
 
 def extract_negative_regions(image, labels, neg_size=(128, 256), max_attempts=50):
@@ -89,16 +88,16 @@ def extract_negative_regions(image, labels, neg_size=(128, 256), max_attempts=50
 
 
 for split in ["train", "valid", "test"]:
-    image_dir = f"./inria/{split}/images/"
-    labels_dir = f"./inria/{split}/labels/"
-    neg_image_dir = f"./inria_neg/{split}/images"
+    image_dir = os.path.join("inria", split, "images")
+    labels_dir = os.path.join("inria", split, "labels")
+    neg_image_dir = os.path.join("inria_neg", split, "images")
 
     dirs = [image_dir, labels_dir, neg_image_dir]
     for dir in dirs:
         if not os.path.exists(dir):
             os.makedirs(dir)
 
-    for file in tqdm(os.listdir(image_dir)):
+    for file in os.listdir(image_dir):
         imfile = os.path.join(image_dir, file)
         image = cv2.imread(imfile).astype(np.float64)
         label_file = os.path.join(labels_dir, file[:-4] + ".txt")

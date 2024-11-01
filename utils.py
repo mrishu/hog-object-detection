@@ -1,6 +1,4 @@
 import cv2
-import matplotlib.pyplot as plt
-import numpy as np
 
 
 def draw_bounding_boxes(image, labels):
@@ -86,30 +84,3 @@ def crop_image_using_labels(image, labels):
         cropped_images.append(cropped_image)
 
     return cropped_images
-
-
-if __name__ == "__main__":
-    image_name = "crop001001_jpg.rf.32740cc67797bb7094916e179a25ae9b"
-    label_path = "./inria/train/labels/" + image_name + ".txt"
-    image_path = "./inria/train/images/" + image_name + ".jpg"
-
-    image = cv2.imread(image_path)
-    labels = np.loadtxt(label_path)
-
-    ## Draw bounding boxes
-    im_copy = np.copy(image)
-    draw_bounding_boxes(im_copy, labels)
-    plt.imshow(cv2.cvtColor(im_copy, cv2.COLOR_BGR2RGB))
-    plt.axis("off")
-    plt.show()
-
-    ## Crop images from the bounding boxes
-    cropped_images = crop_image_using_labels(image, labels)
-    for i, cropped_image in enumerate(cropped_images):
-        cropped_image_rsz = cv2.resize(
-            cropped_image, (64, 128), interpolation=cv2.INTER_AREA
-        )
-        plt.subplot(1, len(cropped_images), i + 1)
-        plt.imshow(cv2.cvtColor(cropped_image_rsz, cv2.COLOR_BGR2RGB))
-        plt.axis("off")
-    plt.show()

@@ -1,0 +1,5 @@
+__pycache__/
+inria/
+inria_neg/
+data/
+model.pkl
