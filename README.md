@@ -8,13 +8,11 @@ Download the dataset, extract and rename it to `inria`. Place it in the same dir
 
 ## How to execute
 ```bash
-python gen_neg.py
-python prepare_data.py
-python train.py
-python test.py
+./main.sh
 ```
 
 ## Results
+Metrics on Test Set:
 ```
 Accuracy: 0.97
 Precision: 0.95

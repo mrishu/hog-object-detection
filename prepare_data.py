@@ -57,12 +57,12 @@ def prepare_data(pos_image_dir, neg_image_dir, pos_labels_dir=None):
 data_dir = "data"
 
 for split in ["train", "valid", "test"]:
-    print("Preparing", split, "data")
+    print(f"\nPreparing data for {split}...")
     image_dir = os.path.join("inria", split, "images")
     label_dir = os.path.join("inria", split, "labels")
     image_dir_neg = os.path.join("inria_neg", split, "images")
     X, y = prepare_data(image_dir, image_dir_neg, label_dir)
     if not os.path.exists(os.path.join(data_dir, split)):
-        os.makedirs(os.path.join(data_dir, split))
-    np.savetxt(os.path.join(data_dir, split, "features.txt"), X)
-    np.savetxt(os.path.join(data_dir, split, "labels.txt"), y)
+        os.makedirs(os.path.join(data_dir, split), exist_ok=True)
+    np.save(os.path.join(data_dir, split, "features.npy"), X)
+    np.save(os.path.join(data_dir, split, "labels.npy"), y)

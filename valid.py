@@ -5,8 +5,8 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 
 data_dir = "data"
 
-X_test = np.load(os.path.join(data_dir, "test", "features.npy"))
-y_test = np.load(os.path.join(data_dir, "test", "labels.npy"))
+X_test = np.load(os.path.join(data_dir, "valid", "features.npy"))
+y_test = np.load(os.path.join(data_dir, "valid", "labels.npy"))
 
 pipeline = pickle.load(open("model.pkl", "rb"))
 y_pred = pipeline.predict(X_test)
@@ -17,7 +17,7 @@ precision = precision_score(y_test, y_pred, average="binary")
 recall = recall_score(y_test, y_pred, average="binary")
 f1 = f1_score(y_test, y_pred, average="binary")
 
-print("\nMetrics on Test Set:")
+print("\nMetrics on Validation Set: ")
 print(f"Accuracy: {accuracy:.2f}")
 print(f"Precision: {precision:.2f}")
 print(f"Recall: {recall:.2f}")
