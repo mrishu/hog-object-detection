@@ -6,10 +6,10 @@ from sklearn.pipeline import make_pipeline
 import pickle
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
-data_dir = "data"
+from vars import DATA_DIR
 
-X_train = np.load(os.path.join(data_dir, "train", "features.npy"))
-y_train = np.load(os.path.join(data_dir, "train", "labels.npy"))
+X_train = np.load(os.path.join(DATA_DIR, "train", "features.npy"))
+y_train = np.load(os.path.join(DATA_DIR, "train", "labels.npy"))
 
 print("\nTraining SVM...", end=" ")
 # Create a SVM pipeline to scale and train

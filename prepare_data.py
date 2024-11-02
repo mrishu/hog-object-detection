@@ -2,18 +2,36 @@ import cv2
 import os
 import numpy as np
 from tqdm import tqdm
+from typing import Union
 
 from hog import compute_gradients, get_window_descriptor
 from utils import crop_image_using_labels
 
-DETECTION_WIN_SIZE = (64, 128)  # in terms of pixels
-CELL_SIZE = (8, 8)  # in terms of pixels
-UNSIGNED_GRAD = True
-NUM_BINS = 9
-BLOCK_SIZE = (2, 2)  # in terms of number of cells
+from vars import (
+    DATASET_DIR,
+    NEG_DATASET_DIR,
+    NUM_BINS,
+    BLOCK_SIZE,
+    CELL_SIZE,
+    UNSIGNED_GRAD,
+    DETECTION_WIN_SIZE,
+)
 
 
-def get_hog_features(image_dir, labels_dir=None):
+def get_hog_features(
+    image_dir: str, labels_dir: Union[str, None] = None
+) -> list[np.ndarray]:
+    """
+    Takes an image directory and it's corresponding labels directory (optional)
+    and returns a list of HOG features for each image.
+
+    Parameters:
+    - image_dir: The directory of the images.
+    - labels_dir: The directory of the labels (optional).
+
+    Returns:
+    - list[np.ndarray]: A list of HOG features for each image.
+    """
     hog_features = []
     for file in tqdm(os.listdir(image_dir)):
         imfile = os.path.join(image_dir, file)
@@ -41,27 +59,25 @@ def get_hog_features(image_dir, labels_dir=None):
     return hog_features
 
 
-def prepare_data(pos_image_dir, neg_image_dir, pos_labels_dir=None):
-    hog_features_pos = get_hog_features(pos_image_dir, pos_labels_dir)
-    hog_features_neg = get_hog_features(neg_image_dir)
-
-    y_pos = np.ones(len(hog_features_pos))
-    y_neg = np.zeros(len(hog_features_neg))
-
-    X = np.vstack((hog_features_pos, hog_features_neg))
-    y = np.hstack((y_pos, y_neg))
-
-    return X, y
-
-
 data_dir = "data"
 
+# Loop for each split
 for split in ["train", "valid", "test"]:
     print(f"\nPreparing data for {split}...")
-    image_dir = os.path.join("inria", split, "images")
-    label_dir = os.path.join("inria", split, "labels")
-    image_dir_neg = os.path.join("inria_neg", split, "images")
-    X, y = prepare_data(image_dir, image_dir_neg, label_dir)
+
+    # Relevant Directories
+    pos_image_dir = os.path.join(DATASET_DIR, split, "images")
+    pos_labels_dir = os.path.join(DATASET_DIR, split, "labels")
+    neg_image_dir = os.path.join(NEG_DATASET_DIR, split, "images")
+
+    # Prepare data
+    hog_features_pos = get_hog_features(pos_image_dir, pos_labels_dir)
+    hog_features_neg = get_hog_features(neg_image_dir)
+    X = np.vstack((hog_features_pos, hog_features_neg))
+    y_pos = np.ones(len(hog_features_pos))
+    y_neg = np.zeros(len(hog_features_neg))
+    y = np.hstack((y_pos, y_neg))
+
     if not os.path.exists(os.path.join(data_dir, split)):
         os.makedirs(os.path.join(data_dir, split), exist_ok=True)
     np.save(os.path.join(data_dir, split, "features.npy"), X)

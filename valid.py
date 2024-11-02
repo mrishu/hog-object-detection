@@ -3,10 +3,10 @@ import os
 import pickle
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
-data_dir = "data"
+from vars import DATA_DIR
 
-X_test = np.load(os.path.join(data_dir, "valid", "features.npy"))
-y_test = np.load(os.path.join(data_dir, "valid", "labels.npy"))
+X_test = np.load(os.path.join(DATA_DIR, "valid", "features.npy"))
+y_test = np.load(os.path.join(DATA_DIR, "valid", "labels.npy"))
 
 pipeline = pickle.load(open("model.pkl", "rb"))
 y_pred = pipeline.predict(X_test)

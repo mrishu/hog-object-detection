@@ -1,6 +1,10 @@
 #!/bin/sh
 
-rm -rf inria_neg data
+DATA_DIR="data"
+NEG_DATASET_DIR="inria_neg"
+
+rm -rf "$DATA_DIR" "$NEG_DATASET_DIR"
+
 python gen_neg.py
 python prepare_data.py
 python train.py
