@@ -1,7 +1,10 @@
 import cv2
+import numpy as np
 
 
-def draw_bounding_boxes(image, labels):
+def draw_bounding_boxes(
+    image, labels, add_margin=False, final_window_size=(64, 128), margin=16
+):
     """
     Draws bounding boxes on an image based on YOLO-style labels.
 
@@ -11,31 +14,41 @@ def draw_bounding_boxes(image, labels):
     - image_width: Width of the image in pixels.
     - image_height: Height of the image in pixels.
     """
-    if labels.ndim == 1:
-        labels = labels.reshape(-1, len(labels))
+    h, w = image.shape[:2]
     for label in labels:
         class_id = label[0]
+        # Denormalize the label coordinates
+        _, x_center, y_center, box_width, box_height = label
+        x_center, y_center = int(x_center * w), int(y_center * h)
+        box_width, box_height = int(box_width * w), int(box_height * h)
+        
+        if add_margin:
+            # Calculate the required pre-resize box size to include a 16-pixel margin after resizing
+            target_width, target_height = (
+                final_window_size[0] - 2*margin,
+                final_window_size[1] - 2*margin,
+            )  # Core object area within 64x128 after resizing
+            scale_width = final_window_size[0] / target_width
+            scale_height = final_window_size[1] / target_height
+        else:
+            scale_width, scale_height = (1,1)
 
-        image_height, image_width = image.shape[:2]
+        # Expand the box to include margin that will become 16 pixels post-resize
+        expanded_width = int(box_width * scale_width)
+        expanded_height = int(box_height * scale_height)
 
-        # Convert normalized coordinates to pixel coordinates
-        cx = int(label[1] * image_width)
-        cy = int(label[2] * image_height)
-        width = int(label[3] * image_width)
-        height = int(label[4] * image_height)
-
-        # Calculate top-left and bottom-right corners of the bounding box
-        x_min = int(cx - width / 2)
-        y_min = int(cy - height / 2)
-        x_max = int(cx + width / 2)
-        y_max = int(cy + height / 2)
+        # Calculate the bounding box coordinates with the expanded box
+        x1 = max(0, x_center - expanded_width // 2)
+        y1 = max(0, y_center - expanded_height // 2)
+        x2 = min(w, x_center + expanded_width // 2)
+        y2 = min(h, y_center + expanded_height // 2)
 
         # Draw the bounding box
-        cv2.rectangle(image, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
+        cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
         cv2.putText(
             image,
             str(class_id),
-            (x_min, y_min - 10),
+            (x1, y1 - 10),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.5,
             (0, 255, 0),
@@ -43,44 +56,51 @@ def draw_bounding_boxes(image, labels):
         )
 
 
-def crop_image_using_labels(image, labels):
+def crop_image_using_labels(image, labels, add_margin=True, final_window_size=(64, 128), margin=16):
     """
-    Crops images based on YOLO-style labels.
+    Extract and resize labeled regions from an image, adding a 16-pixel margin after resizing.
 
     Parameters:
-    - image: The input image (NumPy array).
-    - labels: List of labels, each a dictionary with 'class_id', 'cx', 'cy', 'width', and 'height'.
+    - image: np.array, the input image
+    - labels: np.array of shape (n, 4), each row is a label in normalized coordinates
+      [x_center, y_center, width, height] with values ranging from 0 to 1.
 
     Returns:
-    - A list of cropped images.
+    - List of cropped and resized 64x128 images with a 16-pixel margin around the object.
     """
-    cropped_images = []
-    image_height, image_width = image.shape[:2]
+    h, w = image.shape[:2]  # Image height and width
+    resized_crops = []
 
-    if labels.ndim == 1:
-        labels = labels.reshape(-1, len(labels))
     for label in labels:
-        # Get bounding box parameters
-        # class_id = label[0]
-        cx = int(label[1] * image_width)
-        cy = int(label[2] * image_height)
-        width = int(label[3] * image_width)
-        height = int(label[4] * image_height)
+        # Denormalize the label coordinates
+        _, x_center, y_center, box_width, box_height = label
+        x_center, y_center = int(x_center * w), int(y_center * h)
+        box_width, box_height = int(box_width * w), int(box_height * h)
 
-        # Calculate bounding box coordinates
-        x_min = int(cx - width / 2)
-        y_min = int(cy - height / 2)
-        x_max = int(cx + width / 2)
-        y_max = int(cy + height / 2)
+        if add_margin:
+            # Calculate the required pre-resize box size to include a 16-pixel margin after resizing
+            target_width, target_height = (
+                final_window_size[0] - 2*margin,
+                final_window_size[1] - 2*margin,
+            )  # Core object area within 64x128 after resizing
+            scale_width = final_window_size[0] / target_width
+            scale_height = final_window_size[1] / target_height
+        else:
+            scale_width, scale_height = (1,1)
 
-        # Ensure the coordinates are within the image boundaries
-        x_min = max(0, x_min)
-        y_min = max(0, y_min)
-        x_max = min(image_width, x_max)
-        y_max = min(image_height, y_max)
+        # Expand the box to include margin that will become 16 pixels post-resize
+        expanded_width = int(box_width * scale_width)
+        expanded_height = int(box_height * scale_height)
 
-        # Crop the image using the bounding box coordinates
-        cropped_image = image[y_min:y_max, x_min:x_max]
-        cropped_images.append(cropped_image)
+        # Calculate the bounding box coordinates with the expanded box
+        x1 = max(0, x_center - expanded_width // 2)
+        y1 = max(0, y_center - expanded_height // 2)
+        x2 = min(w, x_center + expanded_width // 2)
+        y2 = min(h, y_center + expanded_height // 2)
 
-    return cropped_images
+        # Crop and resize the region to 64x128
+        cropped = image[y1:y2, x1:x2]
+        resized_crop = cv2.resize(cropped, (64, 128), interpolation=cv2.INTER_AREA)
+        resized_crops.append(resized_crop)
+
+    return resized_crops

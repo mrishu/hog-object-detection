@@ -1,6 +1,8 @@
 import numpy as np
 import cv2
 
+import numpy as np
+
 
 def cart_to_polar(x: np.ndarray, y: np.ndarray, angleInDegrees: bool = True):
     """Converts two arrays each in Cartesian coordinates to polar coordinates.
@@ -36,10 +38,10 @@ def compute_gradients(image: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     Ix = cv2.filter2D(image, -1, dx_ker)
     Iy = cv2.filter2D(image, -1, dy_ker)
     magnitude, angle = cart_to_polar(Ix, Iy, angleInDegrees=True)
-    # max_magnitude_idx = np.argmax(magnitude, axis=2)
-    # d1x, d2x = np.indices(max_magnitude_idx.shape)
-    # return magnitude[d1x, d2x, max_magnitude_idx], angle[d1x, d2x, max_magnitude_idx]
-    return magnitude, angle
+    max_magnitude_idx = np.argmax(magnitude, axis=2)
+    d1x, d2x = np.indices(max_magnitude_idx.shape)
+    return magnitude[d1x, d2x, max_magnitude_idx], angle[d1x, d2x, max_magnitude_idx]
+    # return magnitude, angle
 
 
 def get_cell_descriptors(
@@ -107,30 +109,28 @@ def get_cell_descriptors(
 
 
 def get_window_descriptor(
-    window_grad_magnitude: np.ndarray,
-    window_grad_angle: np.ndarray,
-    cell_size: tuple[int, int] = (8, 8),
-    unsigned_grad: bool = True,
-    num_bins: int = 9,
-    block_size: tuple[int, int] = (2, 2),
-) -> np.ndarray:
+    grad_magnitude,
+    grad_angle,
+    cell_size=(8, 8),
+    unsigned_grad=True,
+    num_bins=9,
+    block_size=(2, 2),
+):
     """
-    Takes a whole window and returns its HOG descriptor.
-
     Parameters:
     - grad_magnitude: The gradient magnitude matrix of the window.
     - grad_angle: The gradient angle matrix of the window (in degrees).
-    - cell_size: The size of the cells in the window (in terms of number of pixels).
+    - cell_size: The size of the cells in the window.
     - unsigned_grad: Whether the gradient angle is in the range [0, 180] or [0, 360].
     - num_bins: The number of histogram bins for each cell.
-    - block_size : The number of cells in a block (in terms of number of cells).
+    - block_size : number of cells in a block
 
-    Returns:
-    - window_descriptor : a concatenated numpy array of size = (num_cells_in_block * num_bins)
+    returns:
+    - window_descriptor
     """
     cell_descriptors = get_cell_descriptors(
-        window_grad_magnitude,
-        window_grad_angle,
+        grad_magnitude,
+        grad_angle,
         cell_size=cell_size,
         unsigned_grad=unsigned_grad,
         num_bins=num_bins,
@@ -139,18 +139,18 @@ def get_window_descriptor(
     x_cells = cell_descriptors.shape[0]  # number of cells along x_axis
     y_cells = cell_descriptors.shape[1]  # number of cells along y_axis
 
-    x_blocks = x_cells - block_size[1] + 1  # number of blocks along x_axis
-    y_blocks = y_cells - block_size[0] + 1  # number of blocks along y_axis
+    x_blocks = x_cells - block_size[0] + 1  # number of blocks along x_axis
+    y_blocks = y_cells - block_size[1] + 1  # number of blocks along y_axis
 
-    window_vec = []
+    window_descriptors = []
 
     for i in range(x_blocks):
         for j in range(y_blocks):
-            block_vec = cell_descriptors[
+            concat_vec = cell_descriptors[
                 i : i + block_size[0], j : j + block_size[1]
             ].flatten()
-            norm = np.linalg.norm(block_vec)
-            block_vec = block_vec if norm == 0 else block_vec / norm
-            window_vec.extend(block_vec)
-    window_vec = np.array(window_vec)
-    return window_vec
+            norm = np.linalg.norm(concat_vec)
+            concat_vec = concat_vec / norm if norm != 0 else concat_vec
+            window_descriptors.extend(concat_vec)
+
+    return np.array(window_descriptors)

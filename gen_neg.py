@@ -15,7 +15,7 @@ def extract_negative_regions(
     image: np.ndarray,
     labels: np.ndarray,
     neg_size: tuple[int, int] = NEGATIVE_IMAGE_SIZE,
-    max_attempts: int = 50,
+    max_attempts: int = 500,
 ) -> Union[tuple[np.ndarray, np.ndarray], tuple[None, None]]:
     """
     Extract a negative region and its labels from the image that does not overlap any given bounding boxes (labels).
@@ -103,6 +103,7 @@ def extract_negative_regions(
     return None, None
 
 
+scales = [0.4, 0.5, 0.8, 0.9, 1.0, 2.0]
 # Looping over all the three splits
 for split in ["train", "valid", "test"]:
     print(f"\nGenerating negative data for {split}...")
@@ -121,16 +122,23 @@ for split in ["train", "valid", "test"]:
         image = cv2.imread(imfile)
         label_file = os.path.join(labels_dir, file[:-4] + ".txt")
         labels = np.loadtxt(label_file)
-        neg_image, neg_label = extract_negative_regions(image, labels)
         try_num = 1  # try number
-        while neg_label is not None:
-            neg_image_filename = file[:-4] + f"-try{try_num}" + ".jpg"
-            cv2.imwrite(
-                os.path.join(neg_image_dir, neg_image_filename),
-                neg_image,
+        for scale in scales:
+            neg_size = (
+                int(NEGATIVE_IMAGE_SIZE[0] * scale),
+                int(NEGATIVE_IMAGE_SIZE[1] * scale),
             )
-            # Update labels array to include current extracted box so
-            # that next extracted boxes doesn't overlap with current box as well
-            labels = np.vstack((labels, neg_label))
-            neg_image, neg_label = extract_negative_regions(image, labels)
-            try_num += 1
+            neg_image, neg_label = extract_negative_regions(
+                image, labels, neg_size=neg_size
+            )
+            while neg_label is not None:
+                neg_image_filename = file[:-4] + f"-try{try_num}" + ".jpg"
+                cv2.imwrite(
+                    os.path.join(neg_image_dir, neg_image_filename),
+                    neg_image,
+                )
+                # Update labels array to include current extracted box so
+                # that next extracted boxes doesn't overlap with current box as well
+                labels = np.vstack((labels, neg_label))
+                neg_image, neg_label = extract_negative_regions(image, labels)
+                try_num += 1

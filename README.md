@@ -10,18 +10,13 @@ Download the dataset, extract and rename it to `inria`. Place it in the same dir
 https://lear.inrialpes.fr/people/triggs/pubs/Dalal-cvpr05.pdf
 
 ## How to execute
-```bash
-./main.sh
-```
+1. Download the dataset and place it in the repository directory with name `inria`.
+2. Generate negative examples with `python gen_neg.py`.
+3. Prepare and save HOG features for all splits of data with `python prepare_data.py`.
+4. Open `hog-human-detection.ipynb` in Jupyter and execute cells to train and run classifier on testing and validation data. Also the last cell executes sliding windows to find humans in random images picked from test set.
 
 ## Results
 ```
-Metrics on Training Set: 
-Accuracy: 1.00
-Precision: 1.00
-Recall: 1.00
-F1 Score: 1.00
-
 Metrics on Validation Set: 
 Accuracy: 0.95
 Precision: 0.96

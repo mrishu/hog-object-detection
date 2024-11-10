@@ -1,84 +1,87 @@
 import cv2
 import os
-import numpy as np
 from tqdm import tqdm
-from typing import Union
-
-from hog import compute_gradients, get_window_descriptor
+import numpy as np
 from utils import crop_image_using_labels
-
-from vars import (
-    DATASET_DIR,
-    NEG_DATASET_DIR,
-    NUM_BINS,
-    BLOCK_SIZE,
-    CELL_SIZE,
-    UNSIGNED_GRAD,
-    DETECTION_WIN_SIZE,
-)
+from hog import compute_gradients, get_window_descriptor
 
 
-def get_hog_features(
-    image_dir: str, labels_dir: Union[str, None] = None
-) -> list[np.ndarray]:
-    """
-    Takes an image directory and it's corresponding labels directory (optional)
-    and returns a list of HOG features for each image.
+def prepare_data(
+    positive_img_path,
+    positive_labels_path,
+    negative_img_path,
+    detection_win_size=(64, 128),
+    cell_size=(8, 8),
+    unsigned_grad=True,
+    num_bins=9,
+    block_size=(2, 2),
+):
 
-    Parameters:
-    - image_dir: The directory of the images.
-    - labels_dir: The directory of the labels (optional).
+    pos_dataset = []
+    neg_dataset = []
 
-    Returns:
-    - list[np.ndarray]: A list of HOG features for each image.
-    """
-    hog_features = []
-    for file in tqdm(os.listdir(image_dir)):
-        imfile = os.path.join(image_dir, file)
-        image = cv2.imread(imfile).astype(np.float64)
-        if labels_dir:
-            label_file = os.path.join(labels_dir, file[:-4] + ".txt")
-            labels = np.loadtxt(label_file)
-            cropped_images = crop_image_using_labels(image, labels)
-        else:
-            cropped_images = [image]
-        for cropped_image in cropped_images:
-            cropped_image = cv2.resize(
-                cropped_image, DETECTION_WIN_SIZE, cv2.INTER_AREA
-            )
-            grad_magnitude, grad_angle = compute_gradients(cropped_image)
-            descriptor_vector = get_window_descriptor(
+    # for positive images:
+    for imfile in tqdm(os.listdir(positive_img_path)):
+        label_file = imfile[:-4] + ".txt"
+        image = cv2.imread(
+            os.path.join(positive_img_path, imfile)
+        )
+        labels = np.loadtxt(os.path.join(positive_labels_path, label_file), ndmin=2)
+
+        cropped_imgs = crop_image_using_labels(image, labels)
+
+        for img in cropped_imgs:
+            img = cv2.resize(
+                img, detection_win_size, interpolation=cv2.INTER_AREA
+            ).astype(np.float64)
+            grad_magnitude, grad_angle = compute_gradients(img)
+            img_descriptors = get_window_descriptor(
                 grad_magnitude,
                 grad_angle,
-                cell_size=CELL_SIZE,
-                unsigned_grad=UNSIGNED_GRAD,
-                num_bins=NUM_BINS,
-                block_size=BLOCK_SIZE,
+                cell_size=cell_size,
+                unsigned_grad=unsigned_grad,
+                num_bins=num_bins,
+                block_size=block_size,
             )
-            hog_features.append(descriptor_vector)
-    return hog_features
+            pos_dataset.append(img_descriptors)
+    pos_class_id = np.ones(len(pos_dataset))
+
+    # for negative images:
+    for imfile in tqdm(os.listdir(negative_img_path)):
+        image = cv2.imread(
+            os.path.join(negative_image_path, imfile)
+        )
+        img = cv2.resize(image, detection_win_size).astype(np.float64)
+        grad_magnitude, grad_angle = compute_gradients(img)
+        img_descriptors = get_window_descriptor(
+            grad_magnitude,
+            grad_angle,
+            cell_size=cell_size,
+            unsigned_grad=unsigned_grad,
+            num_bins=num_bins,
+            block_size=block_size,
+        )
+        neg_dataset.append(img_descriptors)
+    neg_class_id = np.zeros(len(neg_dataset))
+
+    return np.vstack((pos_dataset, neg_dataset)), np.hstack(
+        (pos_class_id, neg_class_id)
+    )
 
 
-data_dir = "data"
+## Prepare and save data for all splits
 
-# Loop for each split
 for split in ["train", "valid", "test"]:
-    print(f"\nPreparing data for {split}...")
 
-    # Relevant Directories
-    pos_image_dir = os.path.join(DATASET_DIR, split, "images")
-    pos_labels_dir = os.path.join(DATASET_DIR, split, "labels")
-    neg_image_dir = os.path.join(NEG_DATASET_DIR, split, "images")
+    print(f"Preparing {split} data...")
+    base_folder_path = os.path.dirname(os.path.abspath("__main__"))
+    positive_image_path = os.path.join(f"inria/{split}/images")
+    positive_labels_path = os.path.join(f"inria/{split}/labels")
+    negative_image_path = os.path.join(f"inria_neg/{split}/images")
 
-    # Prepare data
-    hog_features_pos = get_hog_features(pos_image_dir, pos_labels_dir)
-    hog_features_neg = get_hog_features(neg_image_dir)
-    X = np.vstack((hog_features_pos, hog_features_neg))
-    y_pos = np.ones(len(hog_features_pos))
-    y_neg = np.zeros(len(hog_features_neg))
-    y = np.hstack((y_pos, y_neg))
+    X, y = prepare_data(positive_image_path, positive_labels_path, negative_image_path)
 
-    if not os.path.exists(os.path.join(data_dir, split)):
-        os.makedirs(os.path.join(data_dir, split), exist_ok=True)
-    np.save(os.path.join(data_dir, split, "features.npy"), X)
-    np.save(os.path.join(data_dir, split, "labels.npy"), y)
+    if not os.path.exists(f"data/{split}"):
+        os.makedirs(f"data/{split}", exist_ok=False)
+    np.save(f"data/{split}/features.npy", X)
+    np.save(f"data/{split}/labels.npy", y)
